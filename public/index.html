@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Campus Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Fraunces:opsz,wght@9..144,600;9..144,800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0f1115;--panel:#181b21;--panel2:#1f232b;--line:#2c313b;--ink:#eceff4;--muted:#8c95a6;--coral:#ff6b4a;--mint:#6fe3c1;--red:#ff5d6c}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"DM Sans",system-ui,sans-serif;display:grid;grid-template-columns:230px 1fr;min-height:100vh}
+aside{background:var(--panel);border-right:1px solid var(--line);padding:24px 14px;position:sticky;top:0;height:100vh}
+.brand{font-family:Fraunces,Georgia,serif;font-weight:800;font-size:1.6rem;line-height:1;padding:0 10px 22px}
+.brand span{color:var(--coral)}
+aside button{display:block;width:100%;text-align:left;background:none;border:0;color:var(--muted);font:inherit;font-weight:500;padding:11px 12px;border-radius:8px;cursor:pointer;margin-bottom:2px}
+aside button:hover{background:var(--panel2);color:var(--ink)}
+aside button.on{background:var(--coral);color:#1b0b06;font-weight:700}
+#dbinfo{position:absolute;bottom:18px;left:24px;right:14px;font-size:.72rem;color:var(--muted);word-break:break-all}
+main{padding:30px 34px;max-width:1000px}
+h1{font-family:Fraunces,Georgia,serif;font-weight:800;font-size:2rem;margin:0 0 4px;letter-spacing:-.01em}
+.sub{color:var(--muted);margin:0 0 22px}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:18px}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;align-items:end}
+label{display:block;font-size:.75rem;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.06em}
+input,select,textarea{width:100%;font:inherit;color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px 10px}
+textarea{min-height:70px;resize:vertical}
+.wide{grid-column:1/-1}
+button.b{font:inherit;font-weight:700;border:0;border-radius:8px;padding:10px 16px;cursor:pointer;background:var(--coral);color:#1b0b06}
+button.b:hover{filter:brightness(1.1)}
+button.g{background:var(--panel2);color:var(--ink);border:1px solid var(--line)}
+button.x{background:transparent;color:var(--red);border:1px solid #4a2a30}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,aside button:focus-visible{outline:2px solid var(--mint);outline-offset:2px}
+table{width:100%;border-collapse:collapse}
+th{font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);text-align:left;padding:8px;border-bottom:1px solid var(--line)}
+td{padding:11px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+td.a{text-align:right;white-space:nowrap}td.a button{padding:6px 11px;margin-left:5px;font-size:.85rem}
+.empty{color:var(--muted);padding:14px 8px}
+.tog{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.tog button{border:0;background:var(--panel2);color:var(--muted);font:inherit;padding:7px 14px;cursor:pointer}
+.tog button.p.on{background:var(--mint);color:#06241b;font-weight:700}
+.tog button.ab.on{background:var(--red);color:#2b0509;font-weight:700}
+.bar{height:8px;background:var(--panel2);border-radius:99px;overflow:hidden;min-width:90px}
+.bar i{display:block;height:100%;background:var(--mint)}.bar i.lo{background:var(--red)}
+.note{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--coral);border-radius:10px;padding:14px 16px;margin-bottom:12px}
+.note h3{margin:0 0 4px;font-size:1.05rem}.note p{margin:0 0 8px;color:#c8cfdb;white-space:pre-wrap}.note small{color:var(--muted)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:14px}.row>div{min-width:170px}
+#msg{position:fixed;right:20px;bottom:20px;background:var(--mint);color:#06241b;font-weight:700;padding:11px 18px;border-radius:10px;display:none;max-width:80%}
+#msg.err{background:var(--red);color:#2b0509}
+@media(max-width:800px){body{grid-template-columns:1fr}aside{position:static;height:auto;display:flex;flex-wrap:wrap;gap:4px;padding:12px}.brand{width:100%;padding:0 6px 8px}aside button{width:auto}#dbinfo{display:none}main{padding:20px 16px}}
+</style>
+</head>
+<body>
+<aside>
+  <div class="brand">Campus<span>.</span>Hub</div>
+  <nav id="nav"></nav>
+  <div id="dbinfo"></div>
+</aside>
+<main><h1 id="h"></h1><p class="sub" id="sub"></p><div id="view"></div></main>
+<div id="msg" role="status"></div>
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const api = async (u, m = 'GET', b) => {
+  const r = await fetch(u, { method: m, headers: { 'Content-Type': 'application/json' }, body: b ? JSON.stringify(b) : undefined });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || 'Request failed');
+  return d;
+};
+let tt;
+const toast = (t, err) => { const m = $('#msg'); m.textContent = t; m.className = err ? 'err' : ''; m.style.display = 'block'; clearTimeout(tt); tt = setTimeout(() => (m.style.display = 'none'), 3000); };
+const guard = (fn) => async (...a) => { try { await fn(...a); } catch (e) { toast(e.message, true); } };
+
+// Simple tables are described by a config; one renderer draws all of them.
+const ENT = {
+  students: { title: 'Students', sub: 'Enrol, update and remove student records.', fields: [['roll_no', 'Roll no'], ['name', 'Name'], ['department', 'Department'], ['year', 'Year', 'number'], ['email', 'Email (optional)']] },
+  courses: { title: 'Courses', sub: 'Courses offered, with faculty and credits.', fields: [['code', 'Code'], ['title', 'Title'], ['faculty', 'Faculty'], ['credits', 'Credits', 'number']] },
+  notices: { title: 'Notices', sub: 'Internal announcements for the whole campus.', fields: [['title', 'Title'], ['body', 'Message', 'textarea']] },
+};
+const PAGES = [['students', 'Students'], ['courses', 'Courses'], ['attendance', 'Attendance'], ['notices', 'Notices']];
+let page = 'students', editId = null, rows = [];
+
+$('#nav').innerHTML = PAGES.map(([k, l]) => `<button data-k="${k}">${l}</button>`).join('');
+document.querySelectorAll('#nav button').forEach((b) => (b.onclick = () => go(b.dataset.k)));
+function go(k) {
+  page = k; editId = null;
+  document.querySelectorAll('#nav button').forEach((b) => b.classList.toggle('on', b.dataset.k === k));
+  k === 'attendance' ? attendanceView() : entityView();
+}
+
+const entityView = guard(async () => {
+  const e = ENT[page];
+  $('#h').textContent = e.title; $('#sub').textContent = e.sub;
+  rows = await api('/api/' + page);
+  const isNotice = page === 'notices';
+  const form = `<div class="box"><div class="form" id="f">${e.fields.map(([k, l, t]) =>
+    `<div class="${t === 'textarea' ? 'wide' : ''}"><label for="f_${k}">${l}</label>${t === 'textarea' ? `<textarea id="f_${k}"></textarea>` : `<input id="f_${k}" type="${t || 'text'}">`}</div>`).join('')}
+    <div style="display:flex;gap:8px"><button class="b" id="save">${editId ? 'Save changes' : 'Add'}</button><button class="b g" id="cancel" hidden>Cancel</button></div></div></div>`;
+  let list;
+  if (isNotice) {
+    list = rows.length ? rows.map((r) => `<div class="note"><h3>${esc(r.title)}</h3><p>${esc(r.body)}</p><small>${new Date(r.created_at).toLocaleString()}</small>
+      <div style="margin-top:8px"><button class="b g" onclick="edit(${r.id})">Edit</button> <button class="b x" onclick="del(${r.id})">Delete</button></div></div>`).join('') : '<div class="empty">No notices yet.</div>';
+  } else {
+    list = `<div class="box" style="overflow-x:auto"><table><thead><tr>${e.fields.map((f) => `<th>${f[1].replace(' (optional)', '')}</th>`).join('')}<th></th></tr></thead><tbody>${
+      rows.length ? rows.map((r) => `<tr>${e.fields.map((f) => `<td>${esc(r[f[0]])}</td>`).join('')}<td class="a"><button class="b g" onclick="edit(${r.id})">Edit</button><button class="b x" onclick="del(${r.id})">Delete</button></td></tr>`).join('')
+      : `<tr><td class="empty" colspan="${e.fields.length + 1}">Nothing here yet. Add the first record above.</td></tr>`}</tbody></table></div>`;
+  }
+  $('#view').innerHTML = form + list;
+  $('#save').onclick = save; $('#cancel').onclick = () => { editId = null; entityView(); };
+  if (editId) {
+    const r = rows.find((x) => x.id === editId);
+    e.fields.forEach(([k]) => ($('#f_' + k).value = r[k] ?? ''));
+    $('#cancel').hidden = false;
+  }
+});
+const save = guard(async () => {
+  const body = {}; ENT[page].fields.forEach(([k]) => (body[k] = $('#f_' + k).value));
+  if (editId) { await api(`/api/${page}/${editId}`, 'PUT', body); toast('Updated'); }
+  else { await api('/api/' + page, 'POST', body); toast('Added'); }
+  editId = null; entityView();
+});
+window.edit = (id) => { editId = id; entityView().then(() => window.scrollTo({ top: 0, behavior: 'smooth' })); };
+window.del = guard(async (id) => {
+  if (!confirm('Delete this record? Related attendance will also be removed.')) return;
+  await api(`/api/${page}/${id}`, 'DELETE'); toast('Deleted'); entityView();
+});
+
+// ---- Attendance ----
+let att = {};
+const attendanceView = guard(async () => {
+  $('#h').textContent = 'Attendance'; $('#sub').textContent = 'Mark a class, save it, and watch each student’s percentage update.';
+  const [students, courses] = await Promise.all([api('/api/students'), api('/api/courses')]);
+  const today = new Date().toLocaleDateString('en-CA');
+  $('#view').innerHTML = `<div class="box"><div class="row">
+    <div><label for="ac">Course</label><select id="ac">${courses.map((c) => `<option value="${c.id}">${esc(c.code)} · ${esc(c.title)}</option>`).join('')}</select></div>
+    <div><label for="ad">Date</label><input id="ad" type="date" value="${today}"></div>
+    <button class="b" id="asave">Save attendance</button><button class="b x" id="aclear">Clear this day</button></div>
+    <div id="alist"></div></div>
+    <h1 style="font-size:1.4rem">Overall attendance</h1><div class="box" id="asum"></div>`;
+  if (!courses.length || !students.length) { $('#alist').innerHTML = '<div class="empty">Add at least one student and one course first.</div>'; }
+  const loadDay = guard(async () => {
+    if (!courses.length) return;
+    const saved = await api(`/api/attendance?course_id=${$('#ac').value}&date=${$('#ad').value}`);
+    att = {}; students.forEach((s) => (att[s.id] = 'Present')); saved.forEach((r) => (att[r.student_id] = r.status));
+    $('#alist').innerHTML = `<table><tbody>${students.map((s) => `<tr><td>${esc(s.roll_no)}</td><td>${esc(s.name)}</td><td class="a"><div class="tog">
+      <button class="p ${att[s.id] === 'Present' ? 'on' : ''}" data-s="${s.id}" data-v="Present">Present</button>
+      <button class="ab ${att[s.id] === 'Absent' ? 'on' : ''}" data-s="${s.id}" data-v="Absent">Absent</button></div></td></tr>`).join('')}</tbody></table>`;
+    document.querySelectorAll('#alist .tog button').forEach((b) => (b.onclick = () => {
+      att[b.dataset.s] = b.dataset.v; const t = b.parentElement;
+      t.querySelector('.p').classList.toggle('on', b.dataset.v === 'Present'); t.querySelector('.ab').classList.toggle('on', b.dataset.v === 'Absent');
+    }));
+  });
+  const loadSum = guard(async () => {
+    const s = await api('/api/attendance/summary');
+    $('#asum').innerHTML = `<table><thead><tr><th>Roll</th><th>Name</th><th>Present / Total</th><th>%</th><th></th></tr></thead><tbody>${s.map((r) => {
+      const p = r.total ? Math.round((r.present / r.total) * 100) : 0;
+      return `<tr><td>${esc(r.roll_no)}</td><td>${esc(r.name)}</td><td>${r.present} / ${r.total}</td><td>${r.total ? p + '%' : '–'}</td><td><div class="bar"><i class="${p < 75 ? 'lo' : ''}" style="width:${p}%"></i></div></td></tr>`;
+    }).join('') || '<tr><td class="empty">No students yet.</td></tr>'}</tbody></table>`;
+  });
+  $('#ac').onchange = loadDay; $('#ad').onchange = loadDay;
+  $('#asave').onclick = guard(async () => {
+    await api('/api/attendance/bulk', 'POST', { course_id: $('#ac').value, date: $('#ad').value, records: Object.entries(att).map(([student_id, status]) => ({ student_id, status })) });
+    toast('Attendance saved'); loadSum();
+  });
+  $('#aclear').onclick = guard(async () => {
+    if (!confirm('Clear attendance for this course on this date?')) return;
+    await api(`/api/attendance?course_id=${$('#ac').value}&date=${$('#ad').value}`, 'DELETE'); toast('Cleared'); loadDay(); loadSum();
+  });
+  loadDay(); loadSum();
+});
+
+go('students');
+fetch('/api/health').then((r) => r.json()).then((h) => ($('#dbinfo').textContent = `Remote MySQL: ${h.db_host} / ${h.database}`)).catch(() => {});
+</script>
+</body>
+</html>
